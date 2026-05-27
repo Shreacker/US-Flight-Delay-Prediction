@@ -1,0 +1,48 @@
+column,dtype,null_pct,example_value
+year,Int64,0,2024
+month,Int64,0,1
+day_of_month,Int64,0,1
+day_of_week,Int64,0,1
+fl_date,datetime64[ns],0,1/1/2024 0:00
+op_unique_carrier,object,0,9E
+op_carrier_fl_num,float64,0,4814
+origin,object,0,JFK
+origin_city_name,object,0,"New York, NY"
+origin_state_nm,object,0,New York
+dest,object,0,DTW
+dest_city_name,object,0,"Detroit, MI"
+dest_state_nm,object,0,Michigan
+crs_dep_time,Int64,0,1252
+dep_time,float64,1.31,1247
+dep_delay,float64,1.31,-5
+taxi_out,float64,1.35,31
+wheels_off,float64,1.35,1318
+wheels_on,float64,1.38,1442
+taxi_in,float64,1.38,7
+crs_arr_time,Int64,0,1508
+arr_time,float64,1.38,1449
+arr_delay,float64,1.61,-19
+cancelled,int64,0,0
+cancellation_code,object,98.64,B
+diverted,int64,0,0
+crs_elapsed_time,float64,0,136
+actual_elapsed_time,float64,1.61,122
+air_time,float64,1.61,84
+distance,float64,0,509
+carrier_delay,float64,0,0
+weather_delay,float64,0,0
+nas_delay,float64,0,0
+security_delay,float64,0,0
+late_aircraft_delay,float64,0,0
+hour,int64,,
+minute,int64,,
+datetime,object,,
+weather_hour,object,,
+temperature_2m,float64,,
+surface_pressure,float64,,
+relative_humidity_2m,int64,,
+dew_point_2m,float64,,
+wind_speed_10m,float64,,
+wind_direction_10m,int64,,
+cloud_cover,int64,,
+weather_code,int64,,
