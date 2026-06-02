@@ -126,15 +126,15 @@ def targz(path: Path):
     with tarfile.open(archive_path, 'w:gz') as tar:
         tar.add(path, arcname=path.name)
 
-def encode_weather(ds: Dataset, weather_col: str = None):
+def encode_weather(dataF: pd.DataFrame, weather_col: str = None):
     if weather_col is None:
         raise KeyError('Weather code column is needed.')
     
-    X, y = ds[:]
-    X['weather_group'] = X[weather_col].apply(_map_wmo_code)
-    X = X.drop(columns=weather_col)
+    df = dataF.copy()
+    df['weather'] = df[weather_col].apply(_map_wmo_code)
+    df = df.drop(columns=weather_col)
 
-    return Dataset(X, y)
+    return df, 'weather'
 
 def _map_wmo_code(code):
     if pd.isna(code): return 'Unknown'
