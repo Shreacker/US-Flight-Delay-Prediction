@@ -4,8 +4,7 @@ import sys
 from abc import ABC, abstractmethod
 from sklearn.preprocessing import PowerTransformer
 
-sys.path.insert(0, '../')
-from ..utils.data.dataset import Dataset
+from utils.data.dataset import Dataset
 
 class BaseBalancer(ABC):
     @abstractmethod

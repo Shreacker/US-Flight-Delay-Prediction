@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ..utils.data.dataset import Dataset
+from utils.data.dataset import Dataset
 
 class TargetEncoder:
     def __init__(self):

@@ -3,9 +3,8 @@ import pandas as pd
 from abc import ABC, abstractmethod
 import sys
 
-sys.path.insert(0, '../')
-from ..utils.data.dataset import Dataset
-from ..utils.utilities import entropy
+from utils.data.dataset import Dataset
+from utils.utilities import entropy
 
 class BaseFilterMethod(ABC):
     @abstractmethod
