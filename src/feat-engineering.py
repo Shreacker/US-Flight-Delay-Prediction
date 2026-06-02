@@ -96,6 +96,36 @@ df['wind_exposure'] = df['wind_speed_10m'] * np.log1p(df['crs_elapsed_time'])
 df['wind_dir_sin'] = np.sin(np.radians(df['wind_direction_10m']))
 df['wind_dir_cos'] = np.cos(np.radians(df['wind_direction_10m']))
 
+# Previous Delay Influence
+df['scheduled_dt'] = pd.to_datetime(
+    df[['year', 'month', 'day_of_month', 'hour']].rename(columns={'day_of_month': 'day'})
+)
+df['is_delayed'] = (df['dep_delay'] > 15).astype(int)
+
+hourly_stats = df.groupby(['origin', 'scheduled_dt']).agg(
+    total_flights=('is_delayed', 'count'),
+    delayed_flights=('is_delayed', 'sum')
+).reset_index()
+
+hourly_stats['target_dt'] = hourly_stats['scheduled_dt'] + pd.DateOffset(hours=1)
+hourly_stats = hourly_stats.rename(columns={
+    'total_flights': 'prev_hour_total',
+    'delayed_flights': 'prev_hour_delayed'
+}).drop(columns=['scheduled_dt'])
+
+df = df.merge(
+    hourly_stats,
+    left_on=['origin', 'scheduled_dt'],
+    right_on=['origin', 'target_dt'],
+    how='left'
+)
+
+df['prev_hour_delay_rate'] = df['prev_hour_delayed'] / df['prev_hour_total']
+df['prev_hour_delay_rate'] = df['prev_hour_delay_rate'].fillna(-1).astype('float32')
+
+trash_cols = ['scheduled_dt', 'is_delayed', 'target_dt', 'prev_hour_total', 'prev_hour_delayed']
+df.drop(columns=trash_cols, inplace=True, errors='ignore')
+
 print(df.shape)
 print(df.columns)
 

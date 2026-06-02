@@ -19,7 +19,8 @@ from preprocessing.filter import quantile_boundary
 from preprocessing.normalizer import StandardScaler, RobustScaler
 
 leakage_cols = [
-    'dep_time', 'dep_delay', 'dep_delay_new',
+    'dep_time', 'dep_delay_new',
+    'dep_delay',
 
     'arr_time',
 
@@ -68,6 +69,7 @@ print('--PREPROCESSING PIPELINE--')
 print('BASIC FILTERING...')
 df = drop_missing(df, thresh=0.3)
 df = df.dropna(subset=['arr_delay'])
+# df = df.dropna(subset=['dep_delay'])
 df = df.drop(columns=leakage_cols, errors='ignore')
 df = df.drop(columns=redundant_cols, errors='ignore')
 
@@ -78,6 +80,7 @@ ds = to_dataset(df, 'arr_delay')
 # Handle Outliers
 print('HANDLING OUTLIERS...')
 ds = quantile_boundary(ds=ds, col='arr_delay', lower=0.001, upper=0.999)
+# ds = quantile_boundary(ds=ds, col='dep_delay', lower=0.001, upper=0.999)
 ds = ds[~(ds.x['distance'] < 15)]
 ds = ds[~((ds.x['distance'] / ds.x['crs_elapsed_time'] * 60 > 400) & (ds.x['crs_elapsed_time'] < 30))]
 
@@ -137,13 +140,13 @@ train_bal, weights = tf.transform(train_enc, retweights=True)
 val_bal = tf.transform(val_enc)
 test_bal = tf.transform(test_enc)
 
-# Normalizer
-print('NORMALIZING DATA...')
-norm = RobustScaler()
-norm.fit(train_bal)
-train_norm = norm.transform(train_bal)
-val_norm = norm.transform(val_bal)
-test_norm = norm.transform(test_bal)
+# # Normalizer
+# print('NORMALIZING DATA...')
+# norm = RobustScaler()
+# norm.fit(train_bal)
+# train_norm = norm.transform(train_bal)
+# val_norm = norm.transform(val_bal)
+# test_norm = norm.transform(test_bal)
 
 print('DONE PREPROCESSING.')
 print('--------------------------------')
@@ -252,7 +255,7 @@ y_true = val_ds.y.to_numpy()
 
 # Metrics
 print('\n||RESULTS OF XGBOOST||')
-print('--MEAN SQUARED ERROR--')
+print('--ROOT MEAN SQUARED ERROR--')
 rmse = root_mean_squared_error(y_true, y_pred)
 print(f'RMSE: {rmse:.2f}')
 
