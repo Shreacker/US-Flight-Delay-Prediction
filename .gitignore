@@ -9,6 +9,8 @@ venv/
 env/
 
 .ipynb_checkpoints/
+testing.ipynb
+data-preproc.ipynb
 
 data/processed/
 data/raw/
