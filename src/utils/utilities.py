@@ -89,8 +89,8 @@ def train_val_test_split(
         test_size: float | None = 0.15,
         **kwargs
 ):
-    train_size = 1. - val_size - test_size
     assert abs(val_size + test_size) < 1. + 1e-6, "Sum of validation size and test size is greater than 1"
+    train_size = 1. - val_size - test_size
 
     X, y = ds[:]
 
@@ -111,6 +111,56 @@ def train_val_test_split(
     )
 
     return Dataset(X_train, y_train), Dataset(X_val, y_val), Dataset(X_test, y_test)
+
+def time_split(
+        ds: Dataset,
+        time_series: pd.Series | None = None,
+        val_size: float | None = None,
+        test_size: float | None = 0.15,
+        **kwargs
+):
+    if time_series is None:
+        raise ValueError('time_series cannot be None!')
+    assert time_series.index.isin(ds.x.index).all(), 'time_series index doesn\'t match ds.x index'
+
+    if val_size is None and test_size is not None:
+        train_size = 1. - test_size
+    elif val_size is not None and test_size is None:
+        test_size = val_size
+        val_size = None
+        train_size = 1. - test_size
+    else:
+        assert abs(val_size + test_size) < 1. + 1e-6, "Sum of validation size and test size is greater than 1"
+        train_size = 1. - test_size - val_size
+
+    if not pd.api.types.is_datetime64_any_dtype(time_series):
+        time_series = pd.to_datetime(time_series, format='mixed')
+    time_series = time_series.sort_values(ascending=True)
+
+    n = len(ds)
+    i_train = int(train_size * n)
+    
+    if val_size is None:
+        s_train = slice(None, i_train)
+        s_test = slice(i_train, None)
+
+        import pdb; pdb.set_trace()
+        train_ds = ds.loc[time_series.iloc[s_train].index]
+        test_ds = ds.loc[time_series.iloc[s_test].index]
+
+        return train_ds, test_ds
+
+    else:
+        i_val = int((train_size + val_size) * n)
+        s_train = slice(None, i_train)
+        s_val = slice(i_train, i_val)
+        s_test = slice(i_val, None)
+
+        train_ds = ds.loc[time_series.iloc[s_train].index]
+        val_ds = ds.loc[time_series.iloc[s_val].index]
+        test_ds = ds.loc[time_series.iloc[s_test].index]
+
+        return train_ds, val_ds, test_ds
 
 def entropy(x: pd.Series):
     if len(x) == 0:
