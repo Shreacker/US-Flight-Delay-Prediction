@@ -14,7 +14,7 @@ from utils.data.dataset import Dataset, to_dataset
 from utils.utilities import *
 from preprocessing.balancer import GroupCat, Transformer
 from preprocessing.filler import fill_missing
-from preprocessing.encoder import OHE, TargetEncoder
+from preprocessing.encoder import OHE, RollingTargetEncoder
 from preprocessing.filter import quantile_boundary
 from preprocessing.normalizer import StandardScaler, RobustScaler
 
@@ -65,31 +65,32 @@ print('--------------------------------')
 --PREPROCESSING PIPELINE--
 '''
 print('--PREPROCESSING PIPELINE--')
+
+fl_date = df['fl_date']
+
 # Basic Filter
 print('BASIC FILTERING...')
 df = drop_missing(df, thresh=0.3)
 df = df.dropna(subset=['arr_delay'])
-# df = df.dropna(subset=['dep_delay'])
 df = df.drop(columns=leakage_cols, errors='ignore')
 df = df.drop(columns=redundant_cols, errors='ignore')
 
 df = obj2cat(df)
+
+# Handle Duplicates
+print('HANDLING EXACT DUPLICATES...')
+df.drop_duplicates(inplace=True)
 
 ds = to_dataset(df, 'arr_delay')
 
 # Handle Outliers
 print('HANDLING OUTLIERS...')
 ds = quantile_boundary(ds=ds, col='arr_delay', lower=0.001, upper=0.999)
-# ds = quantile_boundary(ds=ds, col='dep_delay', lower=0.001, upper=0.999)
 ds = ds[~(ds.x['distance'] < 15)]
 ds = ds[~((ds.x['distance'] / ds.x['crs_elapsed_time'] * 60 > 400) & (ds.x['crs_elapsed_time'] < 30))]
 
 for col in ds.x.select_dtypes(include=['object', 'string']).columns:
     ds.x[col] = ds.x[col].astype('category')
-
-# Handle Duplicates
-print('HANDLING EXACT DUPLICATES...')
-df.drop_duplicates(inplace=True)
 
 # Fill Missing
 print('FILLING MISSING...')
@@ -97,12 +98,12 @@ group = ['month', 'op_unique_carrier']
 ds = fill_missing(ds, group=group)
 
 # Group Rare Categories
-print('GROUPING RARE CATEGORIES')
+print('GROUPING RARE CATEGORIES...')
 cat_cols = ['op_unique_carrier', 'origin', 'dest']
-min_pct = [0.02, 0.002, 0.002] # REASON WHY CHOOSE THESE NUMBERS
+coverage = [0.98, 0.999, 0.999]
 
 gr = GroupCat()
-gr.fit(ds, cat_cols, min_pct=min_pct)
+gr.fit(ds, cat_cols, coverage=coverage)
 ds = gr.transform(ds)
 
 # Feature Selection
@@ -121,22 +122,22 @@ ds = OHE(ds, columns=low_card, drop_first=False)
 
 # Split Data
 print('SPLITTING DATA...')
-train_ds, val_ds, test_ds = train_val_test_split(ds, random_state=21)
+fl_date = fl_date.loc[ds.x.index]
+train_ds, val_ds, test_ds = time_split(ds, fl_date, val_size=0.15, test_size=0.15, random_state=21)
+# train_ds, val_ds, test_ds = train_val_test_split(ds, val_size=0.15, test_size=0.15, random_state=21)
 
-# Target Encoding
-print('TARGET ENCODING...')
-enc = TargetEncoder()
-enc.fit(train_ds, high_card, smoothing=10.)
-
-train_enc = enc.transform(train_ds)
-val_enc = enc.transform(val_ds)
-test_enc = enc.transform(test_ds)
+# Rolling Target Encoding
+print('ROLLING TARGET ENCODING...')
+enc = RollingTargetEncoder()
+train_enc = enc.fit_transform(train_ds, cols=high_card, smoothing=10.)
+val_enc = enc.transform(val_ds, smoothing=10.)
+test_enc = enc.transform(test_ds, smoothing=10.)
 
 # Transform Target
 print('TRANSFORMING TARGET...')
 tf = Transformer()
 tf.fit(train_enc)
-train_bal, weights = tf.transform(train_enc, retweights=True)
+train_bal, weights = tf.transform(train_enc, qbins=30, retweights=True)
 val_bal = tf.transform(val_enc)
 test_bal = tf.transform(test_enc)
 
@@ -165,7 +166,7 @@ test_final = pd.concat([test_bal.x.reset_index(drop=True), test_bal.y], axis=1)
 # print('SAVED DATASET SUCCESSFULLY.')
 # print('--------------------------------')
 
-del df, ds, train_enc, val_enc, test_enc
+del df, ds, train_ds, train_enc, val_enc, test_enc
 gc.collect()
 
 print('--EVALUATION--')
@@ -210,20 +211,20 @@ print('--R2 SCORE--')
 r2 = r2_score(y_true, y_pred)
 print(f'R2: {r2:.2f}')
 
-# Feature Importance
-print('--FEATURE IMPORTANCE--')
-explainer = shap.Explainer(model)
-shap_values = explainer(X_sample)
+# ---Feature Importance---
+# print('--FEATURE IMPORTANCE--')
+# explainer = shap.Explainer(model)
+# shap_values = explainer(X_sample)
 
-shap.plots.bar(shap_values, show=False)
-plt.tight_layout()
-plt.savefig(PLOT_PATH / 'LGBM_fi_bar.png', dpi=300, bbox_inches='tight')
-plt.close()
+# shap.plots.bar(shap_values, show=False)
+# plt.tight_layout()
+# plt.savefig(PLOT_PATH / 'LGBM_fi_bar.png', dpi=300, bbox_inches='tight')
+# plt.close()
 
-shap.plots.beeswarm(shap_values, show=False)
-plt.tight_layout()
-plt.savefig(PLOT_PATH / 'LGBM_fi_beeswarm.png', dpi=300, bbox_inches='tight')
-plt.close()
+# shap.plots.beeswarm(shap_values, show=False)
+# plt.tight_layout()
+# plt.savefig(PLOT_PATH / 'LGBM_fi_beeswarm.png', dpi=300, bbox_inches='tight')
+# plt.close()
 
 # XGBoost Regressor
 model = XGBRegressor(
@@ -246,7 +247,7 @@ model.fit(
     train_bal.y,
     sample_weight=weights,
     eval_set=[(val_bal.x, val_bal.y)],
-    verbose=100
+    verbose=1
 )
 
 y_pred_tf = model.predict(val_bal.x)
@@ -267,20 +268,20 @@ print('--R2 SCORE--')
 r2 = r2_score(y_true, y_pred)
 print(f'R2: {r2:.2f}')
 
-# Feature Importance
-print('--FEATURE IMPORTANCE--')
-explainer = shap.Explainer(model)
-shap_values = explainer(X_sample)
+# ---Feature Importance---
+# print('--FEATURE IMPORTANCE--')
+# explainer = shap.Explainer(model)
+# shap_values = explainer(X_sample)
 
-shap.plots.bar(shap_values, show=False)
-plt.tight_layout()
-plt.savefig(PLOT_PATH / 'XGB_fi_bar.png', dpi=300, bbox_inches='tight')
-plt.close()
+# shap.plots.bar(shap_values, show=False)
+# plt.tight_layout()
+# plt.savefig(PLOT_PATH / 'XGB_fi_bar.png', dpi=300, bbox_inches='tight')
+# plt.close()
 
-shap.plots.beeswarm(shap_values, show=False)
-plt.tight_layout()
-plt.savefig(PLOT_PATH / 'XGB_fi_beeswarm.png', dpi=300, bbox_inches='tight')
-plt.close()
+# shap.plots.beeswarm(shap_values, show=False)
+# plt.tight_layout()
+# plt.savefig(PLOT_PATH / 'XGB_fi_beeswarm.png', dpi=300, bbox_inches='tight')
+# plt.close()
 
 # BASELINE
 print('\n||COMPARE TO BASELINE||')
@@ -301,4 +302,3 @@ r2_mean = r2_score(y_true, y_pred_mean)
 print(f'RMSE: {rmse_mean:.2f}')
 print(f'MAE: {mae_mean:.2f}')
 print(f'R2: {r2_mean:.2f}')
-
