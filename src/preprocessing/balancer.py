@@ -18,41 +18,40 @@ class BaseBalancer(ABC):
 class GroupCat(BaseBalancer):
     def __init__(self):
         self.cat_dict = dict()
-        self.thresh_dict = dict()
+        self.coverage_dict = dict()
 
     def fit(
             self,
             ds: Dataset,
             cols: np.ndarray | list | None = None,
-            min_freq: np.ndarray | list | None = None,
-            min_pct: np.ndarray | list | None = None
+            coverage: np.ndarray | list | None = None
     ):
         if cols is None:
-            raise ValueError
+            raise ValueError('cols cannot be None!')
+        
+        if coverage is None:
+            raise ValueError('coverage cannot be None!')
+
+        if len(cols) != len(coverage):
+            raise ValueError(
+                f'Expected coverage length {len(cols)}'
+                f'(got {len(coverage)})'
+            )
+        
         self.cols = cols
-
-        if min_pct is not None:
-            if len(min_pct) != len(cols):
-                raise ValueError(f'Expecting min_pct of len {len(cols)} (got {len(min_pct)})')
-            
-            threshold = min_pct * len(ds)
-
-        elif min_freq is not None:
-            if len(min_freq) != len(cols):
-                raise ValueError(f'Expecting min_freq of len {len(cols)} (got {len(min_freq)})')
-            
-            threshold = min_freq
-
-        else:
-            raise ValueError('Specify either min_pct or min_freq.')
+        self.coverage_dict = dict(zip(cols, coverage))
         
         X, y = ds[:]
 
-        self.thresh_dict = dict(zip(cols, threshold))
-        for col in cols:
-            counts = X[col].value_counts()
-            keep_cat = counts[counts >= self.thresh_dict[col]].index
-            self.cat_dict[col] = keep_cat
+        for col in self.cols:
+            counts = X[col].value_counts(normalize=True).sort_values(ascending=False)
+            cum_pct = counts.cumsum()
+            coverage = self.coverage_dict[col]
+            n_keep = (cum_pct < coverage).sum() + 1
+            n_keep = min(n_keep, len(counts))
+            keep_cat = counts.index[:n_keep]
+
+            self.cat_dict[col] = set(keep_cat)
 
         return self
     
@@ -68,7 +67,9 @@ class GroupCat(BaseBalancer):
 
             keep_cat = self.cat_dict[col]
 
-            X[col] = X[col].cat.add_categories(['Other'])
+            if 'Other' not in X[col].cat.categories:
+                X[col] = X[col].cat.add_categories(['Other'])
+            
             X.loc[~X[col].isin(keep_cat), col] = 'Other'
             X[col] = X[col].cat.remove_unused_categories()
 
@@ -99,6 +100,9 @@ class Transformer(BaseBalancer):
         y = pd.Series(y.squeeze(-1), name=name)
         bins = pd.qcut(y, q=qbins, duplicates='drop')
         freq = bins.value_counts()
+
+        X = X.reset_index(drop=True)
+        y = y.reset_index(drop=True)
 
         if not retweights:
             return Dataset(X, y)
