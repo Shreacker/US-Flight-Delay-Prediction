@@ -61,8 +61,8 @@ tod_conditions = [
 tod_choices = [1, 2, 3] # Default = 0 (Night)
 df['time_of_day'] = np.select(tod_conditions, tod_choices, default=0).astype(np.int8)
 
-rush_hours = [7, 8, 9, 17, 18]
-df['is_rush_hour'] = df['hour'].isin(rush_hours).astype('bool')
+rush_hours = [7, 8, 9, 10, 17, 18]
+is_rush = df['hour'].isin(rush_hours).astype('bool')
 
 # Weather
 is_storm = df.get('weather_Storm', 0) == 1
@@ -89,12 +89,61 @@ df['is_bad_weather'] = (df['weather_severity_score'] >= 2).astype('bool')
 # df['wind_cloud_interaction'] = df['wind_speed_10m'] * df['cloud_cover']
 # df['wind_risk'] = np.log1p(df['wind_speed_10m'])
 
-df['rush_hour_x_weather'] = df['is_rush_hour'].astype('int8') * (df['weather_severity_score'] ** 2)
+df['rush_hour_x_weather'] = is_rush.astype('int8') * (df['weather_severity_score'] ** 2)
 
 df['wind_exposure'] = df['wind_speed_10m'] * np.log1p(df['crs_elapsed_time'])
 
 df['wind_dir_sin'] = np.sin(np.radians(df['wind_direction_10m']))
 df['wind_dir_cos'] = np.cos(np.radians(df['wind_direction_10m']))
+
+df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+
+# Pre-departure Features
+df['origin_congestion'] = df.groupby(['origin', 'hour'])['origin'].transform('count').astype('int32')
+df['dest_congestion'] = df.groupby(['dest', 'hour'])['dest'].transform('count').astype('int32')
+
+df['weather_dist_risk'] = (df['weather_severity_score'] * df['distance']).astype('float32')
+
+df['wind_route_risk'] = (df['wind_speed_10m'] * df['distance']).astype('float32')
+
+df['expected_speed'] = (df['distance'] / (df['crs_elapsed_time'] + 1)).astype('float32')
+
+df['is_peak_hour'] = ((df['hour'] >= 6) & (df['hour'] <= 11)) | \
+                     ((df['hour'] >= 16) & (df['hour'] <= 19)).astype('bool')
+
+df['is_weekend_rush'] = df['day_of_week'].isin([1, 4, 5, 7]).astype('bool')
+
+congestion_threshold = df['origin_congestion'].quantile(0.75)
+wind_threshold = df['wind_speed_10m'].quantile(0.75)
+df['wind_risk'] = (df['wind_speed_10m'] > wind_threshold).astype('bool')
+
+df['severe_ops_risk'] = ( # perfect_storm -> severe_ops_risk
+    (df['is_bad_weather'] == 1) &
+    (df['is_peak_hour'] == 1) &
+    (df['origin_congestion'] > congestion_threshold)
+).astype('bool')
+
+df['hub_pressure'] = (
+    (df['is_peak_hour'] == 1) &
+    (df['origin_congestion'] > congestion_threshold)
+).astype('bool')
+
+df['long_haul_weather_risk'] = (
+    (df['distance'] > 1500) &
+    (df['is_bad_weather'] == 1)
+).astype('bool')
+
+df['weekend_peak_risk'] = ( # weekend_nightmare -> weekend_peak_risk
+    (df['is_weekend_rush'] == 1) &
+    (df['is_peak_hour'] == 1) &
+    (df['origin_congestion'] > congestion_threshold)
+).astype('bool')
+
+df['adverse_weather_interaction'] = ( # wind_weather_combo -> adverse_weather_interaction
+    (df['wind_risk'] == 1) &
+    (df['is_bad_weather'] == 1)
+).astype('bool')
 
 # Previous Delay Influence
 df['scheduled_dt'] = pd.to_datetime(
@@ -120,8 +169,9 @@ df = df.merge(
     how='left'
 )
 
-df['prev_hour_delay_rate'] = df['prev_hour_delayed'] / df['prev_hour_total']
-df['prev_hour_delay_rate'] = df['prev_hour_delay_rate'].fillna(-1).astype('float32')
+# prev_hour_delay_rate -> airport_operational_stress
+df['airport_operational_stress'] = df['prev_hour_delayed'] / df['prev_hour_total']
+df['airport_operational_stress'] = df['airport_operational_stress'].fillna(-1).astype('float32')
 
 trash_cols = ['scheduled_dt', 'is_delayed', 'target_dt', 'prev_hour_total', 'prev_hour_delayed']
 df.drop(columns=trash_cols, inplace=True, errors='ignore')
