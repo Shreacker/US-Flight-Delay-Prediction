@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Delay Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-title">
+                <i class="fa-solid fa-plane-departure plane-icon"></i>
+                <h1>Flight Delay Dashboard</h1>
+            </div>
+            <p class="subtitle">01-01-2024 to 31-12-2025</p>
+        </header>
+
+        <!-- Stats Overview -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Flights</h3>
+                <p class="stat-value">14,080,700</p>
+            </div>
+            <div class="stat-card">
+                <h3>Airports</h3>
+                <p class="stat-value">358</p>
+            </div>
+            <div class="stat-card">
+                <h3>Airlines</h3>
+                <p class="stat-value">15</p>
+            </div>
+            <div class="stat-card">
+                <h3>Features (Raw/Eng/Final)</h3>
+                <p class="stat-value">35 / 73 / 45</p>
+            </div>
+        </section>
+
+        <div class="main-grid">
+            <!-- Delayed Distribution -->
+            <div class="card col-span-2">
+                <div class="card-header">
+                    <h2>Arrival Delay Distribution</h2>
+                    <div class="toggle-container">
+                        <button id="btn-dist-orig" class="toggle-btn active">Original</button>
+                        <button id="btn-dist-yj" class="toggle-btn">Yeo-Johnson</button>
+                    </div>
+                </div>
+                <div id="chart-delay-dist" class="chart-container" style="height: 400px;"></div>
+            </div>
+
+            <!-- Missing Values -->
+            <div class="card col-span-1">
+                <div class="card-header">
+                    <h2>Missing Values</h2>
+                    <span class="badge">0% Post-Processing</span>
+                </div>
+                <div id="chart-missing" class="chart-container" style="height: 400px;"></div>
+            </div>
+
+            <!-- Categorical Grouping -->
+            <div class="card col-span-3">
+                <div class="card-header">
+                    <h2>Categorical Grouping (Coverage Target)</h2>
+                    <div class="toggle-container">
+                        <button id="btn-cat-pre" class="toggle-btn active">Pre-Grouping</button>
+                        <button id="btn-cat-post" class="toggle-btn">Post-Grouping</button>
+                    </div>
+                </div>
+                <div class="grid-3" style="gap: 15px;">
+                    <div id="chart-cat-carrier" class="chart-container" style="height: 350px;"></div>
+                    <div id="chart-cat-origin" class="chart-container" style="height: 350px;"></div>
+                    <div id="chart-cat-dest" class="chart-container" style="height: 350px;"></div>
+                </div>
+            </div>
+
+            <!-- Correlation Heatmap -->
+            <div class="card col-span-2">
+                <div class="card-header">
+                    <h2>Correlation Heatmap (Filtered for High Correlation > 0.3)</h2>
+                </div>
+                <div id="chart-correlation" class="chart-container" style="height: 500px;"></div>
+            </div>
+
+            <!-- Temporal View -->
+            <div class="card col-span-1">
+                <div class="card-header">
+                    <h2>Temporal Illustration</h2>
+                    <div class="select-container">
+                        <select id="select-temporal">
+                            <option value="monthly">Monthly</option>
+                            <option value="day_of_month">Daily (Day of Month)</option>
+                            <option value="season">Seasonal</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="chart-temporal" class="chart-container" style="height: 500px;"></div>
+            </div>
+
+            <!-- Hourly Delay -->
+            <div class="card col-span-3">
+                <div class="card-header">
+                    <h2>Hourly Arrival Delay Movement</h2>
+                </div>
+                <div id="chart-hourly" class="chart-container" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
