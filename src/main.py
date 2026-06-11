@@ -12,10 +12,8 @@ from sklearn.metrics import root_mean_squared_error, mean_absolute_error, r2_sco
 
 from utils.data.dataset import Dataset, to_dataset
 from utils.utilities import *
-from preprocessing.balancer import GroupCat, Transformer
-from preprocessing.filler import fill_missing
-from preprocessing.encoder import OHE, RollingTargetEncoder
-from preprocessing.filter import quantile_boundary
+from preprocessing.balancer import Transformer
+from preprocessing.encoder import OneHotEncoder, RollingTargetEncoder
 from preprocessing.normalizer import StandardScaler, RobustScaler
 
 leakage_cols = [
@@ -56,8 +54,10 @@ PLOT_PATH = Path('./src/plot')
 --LOAD DATA--
 '''
 print('LOADING DATA...')
-RAW_PATH = Path('./data/raw/post_feat_engineer')
-df = pd.read_csv(RAW_PATH / 'flight_data_2425_fe.csv', low_memory=False)
+RAW_PATH = Path('./data/engineered')
+train_df = pd.read_csv(RAW_PATH / 'train_engineered.csv', low_memory=False)
+val_df = pd.read_csv(RAW_PATH / 'val_engineered.csv', low_memory=False)
+test_df = pd.read_csv(RAW_PATH / 'test_engineered.csv', low_memory=False)
 print('DONE LOADING.')
 print('--------------------------------')
 
@@ -66,45 +66,9 @@ print('--------------------------------')
 '''
 print('--PREPROCESSING PIPELINE--')
 
-fl_date = df['fl_date']
-
-# Basic Filter
-print('BASIC FILTERING...')
-df = drop_missing(df, thresh=0.3)
-df = df.dropna(subset=['arr_delay'])
-df = df.drop(columns=leakage_cols, errors='ignore')
-df = df.drop(columns=redundant_cols, errors='ignore')
-
-df = obj2cat(df)
-
-# Handle Duplicates
-print('HANDLING EXACT DUPLICATES...')
-df.drop_duplicates(inplace=True)
-
-ds = to_dataset(df, 'arr_delay')
-
-# Handle Outliers
-print('HANDLING OUTLIERS...')
-ds = quantile_boundary(ds=ds, col='arr_delay', lower=0.001, upper=0.999)
-ds = ds[~(ds.x['distance'] < 15)]
-ds = ds[~((ds.x['distance'] / ds.x['crs_elapsed_time'] * 60 > 400) & (ds.x['crs_elapsed_time'] < 30))]
-
-for col in ds.x.select_dtypes(include=['object', 'string']).columns:
-    ds.x[col] = ds.x[col].astype('category')
-
-# Fill Missing
-print('FILLING MISSING...')
-group = ['month', 'op_unique_carrier']
-ds = fill_missing(ds, group=group)
-
-# Group Rare Categories
-print('GROUPING RARE CATEGORIES...')
-cat_cols = ['op_unique_carrier', 'origin', 'dest']
-coverage = [0.98, 0.999, 0.999]
-
-gr = GroupCat()
-gr.fit(ds, cat_cols, coverage=coverage)
-ds = gr.transform(ds)
+train_ds = to_dataset(train_df, 'arr_delay')
+val_ds = to_dataset(val_df, 'arr_delay')
+test_ds = to_dataset(test_df, 'arr_delay')
 
 # Feature Selection
 print('FEATURE SELECTION:')
@@ -113,33 +77,32 @@ corr_drop = [
     'dew_point_2m'
 ]
 print(f'Droping {corr_drop}...')
-ds.x = ds.x.drop(columns=corr_drop, errors='ignore')
+train_ds.x = train_ds.x.drop(columns=corr_drop, errors='ignore')
+val_ds.x = val_ds.x.drop(columns=corr_drop, errors='ignore')
+test_ds.x = test_ds.x.drop(columns=corr_drop, errors='ignore')
 
 # One-hot Encoding
 print('ONE-HOT ENCODING...')
-low_card, high_card = analyze_cardinality(ds.x)
-ds = OHE(ds, columns=low_card, drop_first=False)
-
-# Split Data
-print('SPLITTING DATA...')
-fl_date = fl_date.loc[ds.x.index]
-train_ds, val_ds, test_ds = time_split(ds, fl_date, val_size=0.15, test_size=0.15, random_state=21)
-# train_ds, val_ds, test_ds = train_val_test_split(ds, val_size=0.15, test_size=0.15, random_state=21)
+low_card, high_card = analyze_cardinality(train_ds.x)
+ohe = OneHotEncoder(drop_first=False)
+train_ohe = ohe.fit_transform(train_ds, cols=low_card)
+val_ohe = ohe.transform(val_ds)
+test_ohe = ohe.transform(test_ds)
 
 # Rolling Target Encoding
 print('ROLLING TARGET ENCODING...')
-enc = RollingTargetEncoder()
-train_enc = enc.fit_transform(train_ds, cols=high_card, smoothing=10.)
-val_enc = enc.transform(val_ds, smoothing=10.)
-test_enc = enc.transform(test_ds, smoothing=10.)
+te = RollingTargetEncoder()
+train_te = te.fit_transform(train_ohe, cols=high_card, smoothing=10.)
+val_te = te.transform(val_ohe, smoothing=10.)
+test_te = te.transform(test_ohe, smoothing=10.)
 
 # Transform Target
 print('TRANSFORMING TARGET...')
 tf = Transformer()
-tf.fit(train_enc)
-train_bal, weights = tf.transform(train_enc, qbins=30, retweights=True)
-val_bal = tf.transform(val_enc)
-test_bal = tf.transform(test_enc)
+tf.fit(train_te)
+train_bal, weights = tf.transform(train_te, qbins=30, retweights=True)
+val_bal = tf.transform(val_te)
+test_bal = tf.transform(test_te)
 
 # # Normalizer
 # print('NORMALIZING DATA...')
@@ -158,15 +121,15 @@ train_final = pd.concat([train_bal.x.reset_index(drop=True), train_bal.y], axis=
 val_final = pd.concat([val_bal.x.reset_index(drop=True), val_bal.y], axis=1)
 test_final = pd.concat([test_bal.x.reset_index(drop=True), test_bal.y], axis=1)
 
-# OUTPUT_DIR = Path("../data/processed")
-# os.makedirs(OUTPUT_DIR, exist_ok=True)
-# train_final.to_csv(os.path.join(OUTPUT_DIR, 'train.csv'), index=False)
-# val_final.to_csv(os.path.join(OUTPUT_DIR, 'val.csv'), index=False)
-# test_final.to_csv(os.path.join(OUTPUT_DIR, 'test.csv'), index=False)
-# print('SAVED DATASET SUCCESSFULLY.')
-# print('--------------------------------')
+OUTPUT_DIR = Path("../data/processed")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+train_final.to_csv(OUTPUT_DIR / 'train.csv', index=False)
+val_final.to_csv(OUTPUT_DIR / 'val.csv', index=False)
+test_final.to_csv(OUTPUT_DIR / 'test.csv', index=False)
+print('SAVED DATASET SUCCESSFULLY.')
+print('--------------------------------')
 
-del df, ds, train_ds, train_enc, val_enc, test_enc
+del train_df, val_df, test_df, train_ds, train_te, val_te, test_te
 gc.collect()
 
 print('--EVALUATION--')
@@ -195,7 +158,7 @@ model.fit(
 
 y_pred_tf = model.predict(val_bal.x)
 y_pred = tf.inverse_transform(y_pred_tf).ravel()
-y_true = val_ds.y.to_numpy()
+y_true = tf.inverse_transform(val_bal.y.to_numpy()).ravel()
 
 # Metrics
 print('\n||RESULTS OF LGBM||')
@@ -229,7 +192,7 @@ print(f'R2: {r2:.2f}')
 # XGBoost Regressor
 model = XGBRegressor(
     objective="reg:squarederror",
-    n_estimators=2000,
+    n_estimators=1300,
     max_depth=8,
     min_child_weight=50,
     learning_rate=0.03,
@@ -247,7 +210,7 @@ model.fit(
     train_bal.y,
     sample_weight=weights,
     eval_set=[(val_bal.x, val_bal.y)],
-    verbose=1
+    verbose=100
 )
 
 y_pred_tf = model.predict(val_bal.x)
