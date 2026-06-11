@@ -12,9 +12,6 @@ env/
 testing.ipynb
 data-preproc.ipynb
 
-data/processed/
-data/raw/
-data/engineered/
 plot/
 *.zip
 *.tar
@@ -32,3 +29,5 @@ checkpoints/
 
 .DS_Store
 Thumbs.db
+/data
+.dvc/gdrive-creds-2706.json
