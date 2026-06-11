@@ -31,3 +31,4 @@ checkpoints/
 Thumbs.db
 data/
 .dvc/gdrive-creds-2706.json
+/data
