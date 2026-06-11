@@ -28,7 +28,7 @@ Follow these instructions to set up the project on your local machine.
 ### 1. Pull the Repository
 Clone the repository to your local machine using Git:
 ```bash
-git clone <repository_url>
+git clone "https://github.com/Shreacker/US-Flight-Delay-Prediction"
 cd "Flight Delay"
 ```
 
