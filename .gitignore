@@ -14,7 +14,7 @@ data-preproc.ipynb
 
 data/processed/
 data/raw/
-data/feature_engineered/
+data/engineered/
 plot/
 *.zip
 *.tar
