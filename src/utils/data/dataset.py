@@ -19,7 +19,7 @@ class _iLocIndexer:
     def __getitem__(self, i):
         x = self._ds.x.iloc[i]
         y = self._ds.y.iloc[i]
-        if isinstance(x, pd.Series):
+        if isinstance(x, (pd.Series, pd.DataFrame)):
             return Dataset(x, y)
         return x, y
 

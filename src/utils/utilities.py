@@ -135,30 +135,24 @@ def time_split(
 
     if not pd.api.types.is_datetime64_any_dtype(time_series):
         time_series = pd.to_datetime(time_series, format='mixed')
-    time_series = time_series.sort_values(ascending=True)
+    
+    sorted_positions = np.argsort(time_series.values)
 
     n = len(ds)
     i_train = int(train_size * n)
     
     if val_size is None:
-        s_train = slice(None, i_train)
-        s_test = slice(i_train, None)
-
-        import pdb; pdb.set_trace()
-        train_ds = ds.loc[time_series.iloc[s_train].index]
-        test_ds = ds.loc[time_series.iloc[s_test].index]
+        train_ds = ds.iloc[sorted_positions[:i_train]]
+        test_ds = ds.iloc[sorted_positions[i_train:]]
 
         return train_ds, test_ds
 
     else:
         i_val = int((train_size + val_size) * n)
-        s_train = slice(None, i_train)
-        s_val = slice(i_train, i_val)
-        s_test = slice(i_val, None)
 
-        train_ds = ds.loc[time_series.iloc[s_train].index]
-        val_ds = ds.loc[time_series.iloc[s_val].index]
-        test_ds = ds.loc[time_series.iloc[s_test].index]
+        train_ds = ds.iloc[sorted_positions[:i_train]]
+        val_ds = ds.iloc[sorted_positions[i_train:i_val]]
+        test_ds = ds.iloc[sorted_positions[i_val:]]
 
         return train_ds, val_ds, test_ds
 
