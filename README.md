@@ -32,20 +32,15 @@ git clone "https://github.com/Shreacker/US-Flight-Delay-Prediction"
 cd "Flight Delay"
 ```
 
-### 2. Pull the DVC Data
-This project uses Data Version Control (DVC) to manage large datasets. To download the data tracked by DVC, run:
-```bash
-dvc pull
-```
-
-### 3. Setup Environment
+### 2. Setup Environment
 It's recommended to use a virtual environment. You can set it up and install the required dependencies as follows:
 
 **Windows (PowerShell):**
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate
+.venv/Scripts/Activate
 pip install -r requirements.txt
+pip install dvc dvc-gdrive
 ```
 
 **Linux/macOS:**
@@ -53,6 +48,15 @@ pip install -r requirements.txt
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+### 3. Pull the DVC Data
+This project uses Data Version Control (DVC) to manage large datasets. To download the data tracked by DVC, run:
+```bash
+dvc remote modify --local myremote gdrive_client_id "530206577614-fiau6klarp9gcfsqcijueeo0f3vbmh7i.apps.googleusercontent.com"
+dvc remote modify --local myremote gdrive_client_secret "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"
+
+dvc pull
 ```
 
 ### 4. Running the Pipeline
