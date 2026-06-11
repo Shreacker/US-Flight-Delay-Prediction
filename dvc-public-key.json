@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "ds108q21-flight-delay-dataset",
+  "private_key_id": "394c6e001409ea2d580818d0703e0666ec465ea3",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDJ2IaVnnY/ohdn\n58WnFAmXHTIj8GHsC3avNyVopfvVDuKpIQdZuCf9xVszIWTn1qA8le9aIUIPgnZp\nYRQtmJrB6as2uYGqQGgIDBv+FjW6p9d01COtY48T/bxJ8C7FgjrxHbkzfd1x5yL0\njiHjW48nJmo8Ny5ftfPnpM1XkFrvYsllRrrRrgJqZO1WRR3wE22y51fNq6OLXmsz\nYTWB7y3EGtkfvT7eTCzZjDLG5sSRgbDqI4W2zyfIPmwJOi4lQ/rr+fWtohzZ3TYu\ncSVyfswC6rx6usgjzJvJhVaOW97I+H7S7UJ0zUftqZwPNZwKaVrVgv6fvEHyC1iL\nNnEfV91HAgMBAAECggEAAvWy24TMVRiKYVKrukx364hZEN/Yf76XSfB0EvnEHJaw\nSiyaz/z8USNQuAo4UZH7HYhRTzAHqPSPyfHLevOu6UME6LOFrDpvjBapXmty9D67\n0RG/SC6ajX9+AFOOTAUh2iFGcvPYiHAMOivPYWcZTUip7CIfAvZHElF/VVZfjv0M\nLh8XdpX8sVB7P5u5vs9UFY6KmDYOxfj+Y4GxFMoKYWwYoHT9sCpRrD6KKsMX/bTB\nlar6TAH3YFB5ZF+mhbW3HVLIL3lyK4yZA+PkWaNcqsaH5WPocH+6zy4i38Sjr3Jo\nzSlTsF4GUurYEVVCbGy5dkPIyk2wbmIQM3VuVz568QKBgQDm3/Egbg6WafPIowdq\nuNZriGjS2886T5GLnrbhKoPpc5PqI2g0oeHeE/UDS2J6T6fK4niHeT3Erm9ljOIT\nHwyWIo6idevm2ZZRTUtJe9LZMxsIolf4cjwEjDVarpnph3QZf5J22sHWaVA1EjHh\nGD+6OFRAb5KKJoYUko8ObR61jwKBgQDfz9nXvpueRNuMkWqgKNVpSgci+r6UYWxY\nHyqSjGXk0u5Hi8BbLTqqytyafZQSop4mYhcoEUb2VtoGhrjVImPtbyQQSSAP6KFQ\n50ywIm+pyNUeJ9J5Rm5pLZwoHsFN8MapGlAt+xYuZwBuqpz4CH/3ueMS4GKHjy9V\nJcWKeYewyQKBgQDjgcg2Id3kIPJnQyf65bv96UUKjCqwFlqhUDx8tA2bThZzQoLc\nYq2VzurBXVbkmnwJdJQ7Q6E3oIELfAIHv7ACfnk55KQbL01uPpGzDv7eo/q+zmOL\n4t37yUKGYsoukxk4SztEPhuHMu4j7hMS8ndSBVIY0RmBY6b6vNWV7Le3RwKBgBgd\n96Vt3qsBVH8jNFAp1kVQOtCkIGEw1lHwmc/M3TX5HMAM6R9qEkZRMdBb89bGOzB7\npW8l3XWyCjBl2AjvecEeFs7CcngEY02qfvMD4vByubRUKjPzSPaAebFBDyds6JtU\nQIuT4OIDK2LBc8Sudcul9jgUgcmFvl34gf7X9a0xAoGAdI5PN7aX44k0eYvP/XVA\nRxywwEEfC5f1yE1buhYL/kPFbXdiwUi3fECWkyCEMKGukQxmBW7QjcN16KfOgpRD\nnYo8TDkiWRbgkmFZ5K7VOXuziyyBAkR1d6ia4GJy88PJAPYqITotLjuH4yd5YOJV\nakhRdO14F2rjKb/j6dHGqJw=\n-----END PRIVATE KEY-----\n",
+  "client_email": "dvc-public-reader@ds108q21-flight-delay-dataset.iam.gserviceaccount.com",
+  "client_id": "102005888705852265724",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dvc-public-reader%40ds108q21-flight-delay-dataset.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
