@@ -29,5 +29,5 @@ checkpoints/
 
 .DS_Store
 Thumbs.db
-/data
+data/
 .dvc/gdrive-creds-2706.json
