@@ -119,3 +119,61 @@ def OHE(
     X = pd.get_dummies(X, columns=columns, drop_first=drop_first, **kwargs)
 
     return Dataset(X, y)
+
+class OneHotEncoder:
+    def __init__(self, drop_first=False, **kwargs):
+        self.drop_first = drop_first
+        self.kwargs = kwargs
+
+        self.cols = None
+        self.feature_names = None
+
+    def fit(
+            self,
+            ds: Dataset,
+            cols: list | np.ndarray | None = None
+    ):
+        if cols is None or not cols:
+            self.columns = []
+            self.feature_names = ds.x.columns.tolist()
+            return self
+        
+        self.cols = list(cols)
+
+        X_dummy = pd.get_dummies(
+            ds.x,
+            columns=self.cols,
+            drop_first=self.drop_first,
+            **self.kwargs
+        )
+
+        self.feature_names = X_dummy.columns.tolist()
+
+        return self
+    
+    def transform(
+            self,
+            ds: Dataset
+    ):
+        X = pd.get_dummies(
+            ds.x,
+            columns=self.cols,
+            drop_first=self.drop_first,
+            **self.kwargs
+        )
+
+        missing_cols = set(self.feature_names) - set(X.columns)
+        for col in missing_cols:
+            X[col] = 0
+
+        X = X.reindex(columns=self.feature_names, fill_value=0)
+
+        return Dataset(X, ds.y.copy())
+    
+    def fit_transform(
+            self,
+            ds: Dataset,
+            cols: list | np.ndarray | None = None
+    ):
+        self.fit(ds, cols)
+        return self.transform(ds)

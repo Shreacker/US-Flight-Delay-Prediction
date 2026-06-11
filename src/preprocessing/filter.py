@@ -138,6 +138,79 @@ class Filter:
 
         return Dataset(X, y)
 
+class QuantileBoundaryFilter:
+    def __init__(
+            self,
+            col: str | None = None,
+            lower: float | None = 0.,
+            upper: float | None = 1.
+    ):
+        if col is None:
+            raise ValueError('col cannot be None.')
+
+        self.col = col
+        self.lower = lower
+        self.upper = upper
+
+    def fit(
+            self,
+            ds: Dataset | None = None,
+            df: pd.DataFrame | None = None,
+    ):
+        if ds is not None and df is not None:
+            raise ValueError('Pass only either Dataset or DataFrame argument at a time.')
+        if ds is None and df is None:
+            raise ValueError('Pass either a Dataset or DataFrame.')
+        
+        feat = self._extract_feature(ds, df)
+        self.lower_bound_ = feat.quantile(self.lower)
+        self.upper_bound_ = feat.quantile(self.upper)
+        
+        return self
+    
+    def transform(
+            self,
+            ds: Dataset | None = None,
+            df: pd.DataFrame | None = None,
+    ) -> Dataset | pd.DataFrame:
+        if ds is not None and df is not None:
+            raise ValueError('Pass only either Dataset or DataFrame argument at a time.')
+        if ds is None and df is None:
+            raise ValueError('Pass either a Dataset or DataFrame.')
+        if not hasattr(self, 'lower_bound_'):
+            raise RuntimeError('Call fit() before transform().')
+        
+        feat = self._extract_feature(ds, df)
+        mask = feat.between(self.lower_bound_, self.upper_bound_) | feat.isna()
+
+        if ds is not None:
+            return ds[mask]
+        
+        return df[mask]
+    
+    def fit_transform(
+            self,
+            ds: Dataset | None = None,
+            df: pd.DataFrame | None = None,
+    ) -> Dataset | pd.DataFrame:
+        self.fit(ds, df)
+        return self.transform(ds, df)
+    
+    def _extract_feature(
+            self,
+            ds: Dataset | None,
+            df: pd.DataFrame | None
+    ) -> pd.Series:
+        if ds is not None:
+            if self.col in ds.x.columns:
+                return ds.x[self.col]
+            elif self.col == ds.y.name:
+                return ds.y
+            else:
+                raise KeyError(f'Invalid feature name: {self.col}.')
+            
+        return df[self.col]
+
 def quantile_boundary(
         ds: Dataset | None = None,
         df: pd.DataFrame | None = None,
