@@ -62,7 +62,7 @@ check_schema(df1, df2)
 print('CONVERTING DATA TYPES...')
 df1 = dtype_converter(df1, dtypes)
 df2 = dtype_converter(df2, dtypes)
-df = pd.concat([df1, df2], axis=0)
+df = pd.concat([df1, df2], axis=0, ignore_index=True)
 print('DONE CONVERTING.')
 print('|----------------|')
 
@@ -73,6 +73,7 @@ gc.collect()
 DATA CLEANING
 '''
 print('---DATA CLEANING---')
+df = df.reset_index(drop=True)
 fl_date = df['fl_date']
 
 # Basic Filter
@@ -163,7 +164,9 @@ train_final = pd.concat([train_engineered.x, train_engineered.y], axis=1)
 val_final   = pd.concat([val_engineered.x, val_engineered.y], axis=1)
 test_final  = pd.concat([test_engineered.x, test_engineered.y], axis=1)
 
-print('Number of features:', train_final.columns.size)
+print('Size of train, val, test:')
+print(len(train_final), len(val_final), len(test_final))
+print('Number of features:', train_final.columns.size - 1)
 print('All features:')
 print(train_final.columns)
 

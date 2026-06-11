@@ -3,11 +3,11 @@ import pandas as pd
 import os, sys
 import gc
 import shap
+import pickle
 from pathlib import Path
 from matplotlib import pyplot as plt
 from lightgbm import LGBMRegressor
 from xgboost import XGBRegressor
-from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import root_mean_squared_error, mean_absolute_error, r2_score
 
 from utils.data.dataset import Dataset, to_dataset
@@ -16,45 +16,15 @@ from preprocessing.balancer import Transformer
 from preprocessing.encoder import OneHotEncoder, RollingTargetEncoder
 from preprocessing.normalizer import StandardScaler, RobustScaler
 
-leakage_cols = [
-    'dep_time', 'dep_delay_new',
-    'dep_delay',
-
-    'arr_time',
-
-    'actual_elapsed_time', 'air_time',
-
-    'taxi_in', 'taxi_out',
-    'wheels_on', 'wheels_off',
-
-    'carrier_delay', 'weather_delay', 'nas_delay',
-    'security_delay', 'late_aircraft_delay'
-]
-
-redundant_cols = [
-    'origin_state_nm',
-    'origin_city_name',
-    'dest_state_nm',
-    'dest_city_name',
-    'op_carrier_fl_num',
-    'cancellation_code',
-    'cancelled',
-    'diverted',
-    'fl_date',
-    'year',
-    'crs_dep_time',
-    'dep_datetime',
-    'weather_hour',
-    'datetime'
-]
-
 PLOT_PATH = Path('./src/plot')
+OUTPUT_DIR = Path('../data/processed')
+RAW_PATH = Path('./data/engineered')
+CHKP_PATH = Path('./src/checkpoints')
 
 '''
 --LOAD DATA--
 '''
 print('LOADING DATA...')
-RAW_PATH = Path('./data/engineered')
 train_df = pd.read_csv(RAW_PATH / 'train_engineered.csv', low_memory=False)
 val_df = pd.read_csv(RAW_PATH / 'val_engineered.csv', low_memory=False)
 test_df = pd.read_csv(RAW_PATH / 'test_engineered.csv', low_memory=False)
@@ -69,6 +39,9 @@ print('--PREPROCESSING PIPELINE--')
 train_ds = to_dataset(train_df, 'arr_delay')
 val_ds = to_dataset(val_df, 'arr_delay')
 test_ds = to_dataset(test_df, 'arr_delay')
+
+del train_df, val_df, test_df
+gc.collect()
 
 # Feature Selection
 print('FEATURE SELECTION:')
@@ -115,153 +88,25 @@ test_bal = tf.transform(test_te)
 print('DONE PREPROCESSING.')
 print('--------------------------------')
 
+print('Length of train, val, test')
+print(len(train_bal), len(val_bal), len(test_bal))
+print('Number of features:', train_bal.x.columns.size)
+
 # Save Dataset
 print('SAVING DATASET...')
+os.makedirs(CHKP_PATH, exist_ok=True)
+with open(CHKP_PATH / 'transformer.pkl', 'wb') as f:
+    pickle.dump(tf, f)
+
+with open(CHKP_PATH / 'weights.pkl', 'wb') as f:
+    pickle.dump(weights, f)
+
 train_final = pd.concat([train_bal.x.reset_index(drop=True), train_bal.y], axis=1)
 val_final = pd.concat([val_bal.x.reset_index(drop=True), val_bal.y], axis=1)
 test_final = pd.concat([test_bal.x.reset_index(drop=True), test_bal.y], axis=1)
 
-OUTPUT_DIR = Path("../data/processed")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 train_final.to_csv(OUTPUT_DIR / 'train.csv', index=False)
 val_final.to_csv(OUTPUT_DIR / 'val.csv', index=False)
 test_final.to_csv(OUTPUT_DIR / 'test.csv', index=False)
 print('SAVED DATASET SUCCESSFULLY.')
-print('--------------------------------')
-
-del train_df, val_df, test_df, train_ds, train_te, val_te, test_te
-gc.collect()
-
-print('--EVALUATION--')
-
-X_sample = val_bal.x.sample(
-    10000,
-    random_state=21
-)
-
-# LGBM Regressor
-model = LGBMRegressor(
-    n_estimators=1000,
-    learning_rate=0.05,
-    max_depth=-1,
-    num_leaves=64,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    random_state=42
-)
-
-model.fit(
-    train_bal.x,
-    train_bal.y,
-    sample_weight=weights
-)
-
-y_pred_tf = model.predict(val_bal.x)
-y_pred = tf.inverse_transform(y_pred_tf).ravel()
-y_true = tf.inverse_transform(val_bal.y.to_numpy()).ravel()
-
-# Metrics
-print('\n||RESULTS OF LGBM||')
-print('--ROOT MEAN SQUARED ERROR--')
-rmse = root_mean_squared_error(y_true, y_pred)
-print(f'RMSE: {rmse:.2f}')
-
-print('--MEAN ABSOLUTE ERROR')
-mae = mean_absolute_error(y_true, y_pred)
-print(f'MAE: {mae:.2f}')
-
-print('--R2 SCORE--')
-r2 = r2_score(y_true, y_pred)
-print(f'R2: {r2:.2f}')
-
-# ---Feature Importance---
-# print('--FEATURE IMPORTANCE--')
-# explainer = shap.Explainer(model)
-# shap_values = explainer(X_sample)
-
-# shap.plots.bar(shap_values, show=False)
-# plt.tight_layout()
-# plt.savefig(PLOT_PATH / 'LGBM_fi_bar.png', dpi=300, bbox_inches='tight')
-# plt.close()
-
-# shap.plots.beeswarm(shap_values, show=False)
-# plt.tight_layout()
-# plt.savefig(PLOT_PATH / 'LGBM_fi_beeswarm.png', dpi=300, bbox_inches='tight')
-# plt.close()
-
-# XGBoost Regressor
-model = XGBRegressor(
-    objective="reg:squarederror",
-    n_estimators=1300,
-    max_depth=8,
-    min_child_weight=50,
-    learning_rate=0.03,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    reg_alpha=1.0,
-    reg_lambda=5.0,
-    tree_method="hist",
-    n_jobs=-1,
-    random_state=42
-)
-
-model.fit(
-    train_bal.x,
-    train_bal.y,
-    sample_weight=weights,
-    eval_set=[(val_bal.x, val_bal.y)],
-    verbose=100
-)
-
-y_pred_tf = model.predict(val_bal.x)
-y_pred = tf.inverse_transform(y_pred_tf).ravel()
-y_true = val_ds.y.to_numpy()
-
-# Metrics
-print('\n||RESULTS OF XGBOOST||')
-print('--ROOT MEAN SQUARED ERROR--')
-rmse = root_mean_squared_error(y_true, y_pred)
-print(f'RMSE: {rmse:.2f}')
-
-print('--MEAN ABSOLUTE ERROR')
-mae = mean_absolute_error(y_true, y_pred)
-print(f'MAE: {mae:.2f}')
-
-print('--R2 SCORE--')
-r2 = r2_score(y_true, y_pred)
-print(f'R2: {r2:.2f}')
-
-# ---Feature Importance---
-# print('--FEATURE IMPORTANCE--')
-# explainer = shap.Explainer(model)
-# shap_values = explainer(X_sample)
-
-# shap.plots.bar(shap_values, show=False)
-# plt.tight_layout()
-# plt.savefig(PLOT_PATH / 'XGB_fi_bar.png', dpi=300, bbox_inches='tight')
-# plt.close()
-
-# shap.plots.beeswarm(shap_values, show=False)
-# plt.tight_layout()
-# plt.savefig(PLOT_PATH / 'XGB_fi_beeswarm.png', dpi=300, bbox_inches='tight')
-# plt.close()
-
-# BASELINE
-print('\n||COMPARE TO BASELINE||')
-print('\n--NAIVE PREDICTION (y_pred=0)--')
-y_pred_naive = np.zeros(y_true.shape[0], dtype='float64')
-rmse_naive = root_mean_squared_error(y_true, y_pred_naive)
-mae_naive = mean_absolute_error(y_true, y_pred_naive)
-r2_naive = r2_score(y_true, y_pred_naive)
-print(f'RMSE: {rmse_naive:.2f}')
-print(f'MAE: {mae_naive:.2f}')
-print(f'R2: {r2_naive:.2f}')
-
-print('\n--MEAN PREDICTION (y_pred=mean(y_true)--')
-y_pred_mean = np.full(y_true.shape[0], y_true.mean())
-rmse_mean = root_mean_squared_error(y_true, y_pred_mean)
-mae_mean = mean_absolute_error(y_true, y_pred_mean)
-r2_mean = r2_score(y_true, y_pred_mean)
-print(f'RMSE: {rmse_mean:.2f}')
-print(f'MAE: {mae_mean:.2f}')
-print(f'R2: {r2_mean:.2f}')
