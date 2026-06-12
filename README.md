@@ -55,9 +55,18 @@ This project uses Data Version Control (DVC) to manage large datasets. To downlo
 ```bash
 dvc remote modify --local myremote gdrive_client_id "530206577614-fiau6klarp9gcfsqcijueeo0f3vbmh7i.apps.googleusercontent.com"
 dvc remote modify --local myremote gdrive_client_secret "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"
-
-dvc pull
 ```
+
+Before you run `dvc pull`, you must link the data to your Google Account:
+
+1. Open this link in your web browser: [GoogleDrive](https://drive.google.com/drive/folders/1uIADZmd4MbNl26Ih_y53SX9o9GBjJKf-?usp=sharing)  
+2. At the top of the screen next to the folder name, click the little **dropdown arrow** (or click **Organize**).  
+3. Click **Add** shortcut.  
+4. Select **My Drive** and click **Add**.  
+5. Once the shortcut is in your Drive, go to your terminal and run `dvc pull`.  
+
+**If you still have any problems with gaining access to the data through `dvc pull`, please manually download the data from my Kaggle:** [US Flight Delay Dataset](https://www.kaggle.com/datasets/williamlewistran/us-flight-delay-dataset)  
+**And move the folder to `root`**
 
 ### 4. Running the Pipeline
 Once the environment is set up and the data is pulled, you can run the main scripts in the following order. Make sure your virtual environment is activated.
